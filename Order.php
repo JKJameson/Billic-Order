@@ -24,10 +24,10 @@ class Order {
 		if ($billic->user['blockorders'] == 1) {
 			err('You are not allowed to place any new orders. Please contact support if you believe this is a mistake.');
 		}
-		if (array_key_exists('Ls', $billic->lic)) {
+		$license_data = $billic->get_license_data();
+		if ($license_data['desc']!='Unlimited') {
 			$lic_count = $db->q('SELECT COUNT(*) FROM `services` WHERE `domainstatus` = ?', 'Active');
-			$lic_count = $lic_count[0]['COUNT(*)'];
-			if ($lic_count >= $billic->lic['Ls']) {
+			if ($lic_count[0]['COUNT(*)'] >= $license_data['services']) {
 				err('Unable to accept new orders due to capacity. Please contact support.');
 			}
 		}
