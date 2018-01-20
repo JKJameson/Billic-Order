@@ -26,7 +26,7 @@ class Order {
 		}
 		$license_data = $billic->get_license_data();
 		if ($license_data['desc']!='Unlimited') {
-			$lic_count = $db->q('SELECT COUNT(*) FROM `services` WHERE `domainstatus` = ?', 'Active');
+			$lic_count = $db->q('SELECT COUNT(*) FROM `services`');
 			if ($lic_count[0]['COUNT(*)'] >= $license_data['services']) {
 				err('Unable to accept new orders due to capacity. Please contact support.');
 			}
