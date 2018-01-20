@@ -319,7 +319,7 @@ class Order {
 								'regdate' => $time,
 								'domain' => $domain,
 								'amount' => $total,
-								'setup' => $plan['setup'],
+								'setup' => ($plan['setup']>0?$plan['setup']:0),
 								'billingcycle' => $_POST['billingcycle'],
 								'nextduedate' => $time,
 								'domainstatus' => 'Pending',
@@ -329,7 +329,7 @@ class Order {
 									'import_hash' => $plan['import_hash']
 								))) ,
 							);
-							if ($billic->module_exists('Coupons')) {
+							if ($billic->module_exists('Coupons') && !empty($coupon['name'])) {
 								$service['coupon_name'] = $coupon['name'];
 								$service['coupon_data'] = json_encode($coupon['data']);
 							}
@@ -356,7 +356,7 @@ class Order {
 										'name' => $options['label'],
 										'module_var' => $module_var,
 										'value' => $options['value'],
-										'show' => $options['show'],
+										'show' => (empty($options['show'])?'':$options['show']),
 									);
 								}
 							}
@@ -384,7 +384,7 @@ class Order {
 									'name' => $item['name'],
 									'module_var' => $item['module_var'],
 									'value' => $value,
-									'show' => $item['show'],
+									'show' => (empty($item['show'])?'':$item['show']),
 								));
 							}
 							$service = $db->q('SELECT * FROM `services` WHERE `id` = ?', $serviceid);
