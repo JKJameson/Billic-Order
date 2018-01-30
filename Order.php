@@ -383,7 +383,7 @@ class Order {
 									'serviceid' => $serviceid,
 									'name' => $item['name'],
 									'module_var' => $item['module_var'],
-									'value' => $value,
+									'value' => ($value===null?'':$value),
 									'show' => (empty($item['show'])?'':$item['show']),
 								));
 							}
