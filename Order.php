@@ -6,7 +6,7 @@ class Order {
 	);
 	function fraud_warning() {
 		global $billic, $db;
-		echo '<div class="row" style="clear:both"><div class="alert alert-info" role="alert"><span class="label label-warning"><i class="icon-lock"></i> Warning</span> Your order is subject to anti-fraud checks. We have logged your IP address ' . $_SERVER['REMOTE_ADDR'] . ' which will be checked before your order is activated.</div></div>';
+		echo '<div class="row" style="clear:both"><div class="alert alert-info" role="alert" style="margin:auto"><span class="label label-warning"><i class="icon-lock"></i> Warning</span> Your order is subject to anti-fraud checks. We have logged your IP address ' . $_SERVER['REMOTE_ADDR'] . ' which will be checked before your order is activated.</div></div>';
 	}
 	function user_area() {
 		global $billic, $db;
@@ -494,7 +494,7 @@ class Order {
 				}
 				echo '</table>';
 				if ($billic->module_exists('Coupons')) {
-					echo '<div align="center"' . $billic->highlight('coupon') . '>Have a Coupon or Promotional Code?<br><div class="form-group"><input type="text" name="coupon" class="form-control" placeholder="Enter code here" value="' . safe($_POST['coupon']) . '" style="width:200px;text-align:center"></div><button type="submit" name="apply_coupon" class="btn btn-primary">Apply</button></div><br><br>';
+					echo '<br><div class="input-group mb-4" style="margin:auto"><input type="text" name="coupon" class="form-control" placeholder="Promo Code" value="' . safe($_POST['coupon']) . '" style="text-align:center"><div class="input-group-append"><button type="submit" name="apply_coupon" class="btn btn-primary">Apply</button></div></div><br>';
 				}
 				echo '<table class="table table-striped"><tr><th colspan="2">Verify you are human</th></tr>';
 				$billic->modules['FormBuilder']->output(array(
@@ -524,7 +524,7 @@ function changeOrder() {
 			'value' => 1,
 		);
 		$billic->show_errors();
-		echo '<div id="orderFormContainer" class="col-md-7">';
+		echo '<div class="row"><div id="orderFormContainer" class="col-md-7">';
 		if (empty($orderform['title'])) {
 			$orderform['title'] = 'Configure your order';
 		}
@@ -614,7 +614,7 @@ addLoadEvent(function() {
 	orderSummary();
 });
 </script>';
-		echo '<div class="col-md-5" style="margin-bottom:20px"><div id="orderSummary"></div><div align="center"><input type="button" class="btn btn-success btn-block" value="Continue to next stage &raquo;" onClick="submitOrderForm();"></div></div>';
+		echo '<div class="col-md-5" style="margin-bottom:20px"><div id="orderSummary"></div></div></div><div align="center"><input type="button" class="btn btn-success" value="Continue to next stage &raquo;" onClick="submitOrderForm();"></div><br>';
 		echo '<script>function submitOrderForm() { $( "#orderForm" ).submit(); }</script>';
 		$this->fraud_warning();
 	}
