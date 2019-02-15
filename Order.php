@@ -163,11 +163,13 @@ class Order {
 					$total = $plan['price'];
 				}
 				//echo 'Base Price: '.$total.'<br>';
+				if ($plan['setup']===null) $setup = '0.00'; else $setup = $plan['setup'];				
 				foreach ($orderformitems as $item) {
 					if ($item['type'] == 'dropdown') {
-						$option = $db->q('SELECT `id`, `name`, `price` FROM `orderformoptions` WHERE `id` = ?', $_POST[$item['id']]);
+						$option = $db->q('SELECT `id`, `name`, `price`, `setup` FROM `orderformoptions` WHERE `id` = ?', $_POST[$item['id']]);
 						$option = $option[0];
 						$total+= $option['price'];
+						$setup+= $option['setup'];
 						//echo 'Dropdown Item "'.$opt.'": '.$option['price'].'<br>';
 						
 					} else if ($item['type'] == 'slider') {
@@ -180,9 +182,9 @@ class Order {
 			if (empty($billic->errors) && isset($_POST['Order'])) {
 				if ($billic->module_exists('Coupons') && (isset($_POST['coupon']) || isset($_POST['apply_coupon']))) {
 					if (empty($_POST['coupon'])) {
-						if (isset($_POST['apply_coupon'])) {
+						/*if (isset($_POST['apply_coupon'])) {
 							$billic->error('No coupon was entered', 'coupon');
-						}
+						}*/
 					} else if (empty($billic->errors)) {
 						$coupon = $db->q('SELECT * FROM `coupons` WHERE `name` = ?', $_POST['coupon']);
 						$coupon = $coupon[0];
@@ -219,35 +221,28 @@ class Order {
 										}
 									}
 									$coupon_discount = 0;
+									$coupon_discount_setup = 0;
 									if ($coupon['data']['setup_type'] == 'fixed') {
 										$discount = $coupon['data']['setup'];
-										$plan['setup']-= $discount;
-										$coupon_discount+= $discount;
-										if ($plan['setup'] < 0) {
-											$plan['setup'] = 0;
-										}
+										$setup-= $discount;
+										$coupon_discount_setup+= $discount;
+										if ($setup < 0) $setup = 0;
 									} else if ($coupon['data']['setup_type'] == 'percent') {
-										$discount = (($plan['setup'] / 100) * $coupon['data']['setup']);
-										$plan['setup']-= $discount;
-										$coupon_discount+= $discount;
-										if ($plan['setup'] < 0) {
-											$plan['setup'] = 0;
-										}
+										$discount = (($setup / 100) * $coupon['data']['setup']);
+										$setup-= $discount;
+										$coupon_discount_setup+= $discount;
+										if ($setup < 0) $setup = 0;
 									}
 									if ($coupon['data']['recurring_type'] == 'fixed') {
 										$discount = $coupon['data']['recurring'];
 										$total-= $discount;
 										$coupon_discount+= $discount;
-										if ($total < 0) {
-											$total = 0;
-										}
+										if ($total < 0) $total = 0;
 									} else if ($coupon['data']['recurring_type'] == 'percent') {
 										$discount = (($total / 100) * $coupon['data']['recurring']);
 										$total-= $discount;
 										$coupon_discount+= $discount;
-										if ($total < 0) {
-											$total = 0;
-										}
+										if ($total < 0) $total = 0;
 									}
 									if (isset($_POST['apply_coupon'])) {
 										$billic->status = 'updated';
@@ -260,7 +255,7 @@ class Order {
 						unset($_POST['coupon']);
 					}
 				}
-				if (!isset($_POST['apply_coupon'])) {
+				if (empty($billic->errors) && $billic->status!='updated') {
 					$billic->modules['FormBuilder']->check_everything(array(
 						'form' => $form_check,
 					));
@@ -319,7 +314,7 @@ class Order {
 								'regdate' => $time,
 								'domain' => $domain,
 								'amount' => $total,
-								'setup' => ($plan['setup']>0?$plan['setup']:0),
+								'setup' => $setup,
 								'billingcycle' => $_POST['billingcycle'],
 								'nextduedate' => $time,
 								'domainstatus' => 'Pending',
@@ -416,13 +411,21 @@ class Order {
 			}
 			if (empty($billic->errors) || isset($_POST['base64'])) {
 				$billic->show_errors();
-				echo '<table class="table table-striped"><tr><th colspan="3">Order Summary</th></tr>';
-				echo '<tr><td width="20%">Plan</td><td>' . safe($plan['name']) . '</td><td>' . get_config('billic_currency_prefix') . number_format($baseprice, 2) . get_config('billic_currency_suffix') . '</td></tr>';
+				echo '<table class="table table-striped"><tr><th colspan="4">Order Summary</th></tr>';
+				echo '<tr><td width="20%">Plan</td><td>' . safe($plan['name']) . '</td><td>' . get_config('billic_currency_prefix') . number_format($baseprice, 2) . get_config('billic_currency_suffix') . '</td>';
+				echo '<td>';
+				if ($plan['setup']>0) {
+					echo get_config('billic_currency_prefix') . number_format($plan['setup'], 2) . get_config('billic_currency_suffix') . ' setup fee';
+				}
+				echo '</td>';
+				echo '</tr>';
 				foreach ($orderformitems as $item) {
+					$linesetup = 0;
 					echo '<tr><td>' . safe($item['name']) . '</td>';
 					if ($item['type'] == 'dropdown') {
-						$option = $db->q('SELECT `id`, `name`, `price` FROM `orderformoptions` WHERE `id` = ?', $_POST[$item['id']]);
+						$option = $db->q('SELECT `id`, `name`, `price`, `setup` FROM `orderformoptions` WHERE `id` = ?', $_POST[$item['id']]);
 						$option = $option[0];
+						$linesetup = $option['setup'];
 						echo '<td>' . safe($option['name']) . '</td>';
 						echo '<td>' . get_config('billic_currency_prefix') . number_format($option['price'], 2) . get_config('billic_currency_suffix') . '</td>';
 					} else if ($item['type'] == 'slider') {
@@ -439,17 +442,22 @@ class Order {
 					} else {
 						echo '<td colspan="2">' . safe($_POST[$item['id']]) . '</td>';
 					}
+					echo '<td>';
+					if ($linesetup>0) {
+						echo get_config('billic_currency_prefix') . number_format($option['setup'], 2) . get_config('billic_currency_suffix') . ' setup fee';
+					}
+					echo '</td>';
 					echo '</tr>';
 				}
 				if (isset($coupon_discount)) {
-					echo '<tr><td colspan="2" align="right">Coupon Discount:</td><td>- ' . get_config('billic_currency_prefix') . number_format($coupon_discount, 2) . get_config('billic_currency_suffix') . '</td></tr>';
+					echo '<tr><td colspan="2" align="right">Coupon Discount:</td><td>(' . get_config('billic_currency_prefix') . number_format($coupon_discount, 2) . get_config('billic_currency_suffix') . ')</td><td>(' . get_config('billic_currency_prefix') . number_format($coupon_discount_setup, 2) . get_config('billic_currency_suffix') . ') setup fee</td></tr>';
 				}
-				if ($plan['setup'] > 0) {
-					echo '<tr><td colspan="2" align="right">First month with setup fee:</td><td>' . get_config('billic_currency_prefix') . number_format($total + $plan['setup'], 2) . get_config('billic_currency_suffix') . '</td></tr>';
-					echo '<tr><td colspan="2" align="right">After first month:</td><td><u>' . get_config('billic_currency_prefix') . number_format($total, 2) . get_config('billic_currency_suffix') . '</u></td></tr>';
+				if ($setup > 0) {
+					echo '<tr><td colspan="2" align="right">First month with setup fee:</td><td colspan="2">' . get_config('billic_currency_prefix') . number_format($total + $setup, 2) . get_config('billic_currency_suffix') . '</td></tr>';
+					echo '<tr><td colspan="2" align="right">After first month:</td><td colspan="2"><u>' . get_config('billic_currency_prefix') . number_format($total, 2) . get_config('billic_currency_suffix') . '</u></td></tr>';
 					$total+= $plan['setup'];
 				} else {
-					echo '<tr><td colspan="2" align="right">Total:</td><td><u>' . get_config('billic_currency_prefix') . number_format($total, 2) . get_config('billic_currency_suffix') . '</u></td></tr>';
+					echo '<tr><td colspan="2" align="right">Total:</td><td colspan="2"><u>' . get_config('billic_currency_prefix') . number_format($total, 2) . get_config('billic_currency_suffix') . '</u></td></tr>';
 				}
 				echo '</table><br><br>';
 				if (empty($_POST['billingcycle'])) {
@@ -484,7 +492,7 @@ class Order {
 					if ($discount > 0) {
 						echo '</span>';
 					}
-					echo '</td>' . ($plan['setup'] > 0 ? '<th>' . get_config('billic_currency_prefix') . $plan['setup'] . get_config('billic_currency_suffix') . '</th>' : '') . '<td><b>' . get_config('billic_currency_prefix') . $amount_now . get_config('billic_currency_suffix') . ($plan['prorata_day'] > 0 ? ' (Then ' . get_config('billic_currency_prefix') . $amount . get_config('billic_currency_suffix') . ' on the ' . date('jS', mktime(0, 0, 1, date('m') , $plan['prorata_day'])) . ' of every month)' : '') . '</b></td></tr>';
+					echo '</td><td><b>' . get_config('billic_currency_prefix') . $amount_now . get_config('billic_currency_suffix') . ($plan['prorata_day'] > 0 ? ' (Then ' . get_config('billic_currency_prefix') . $amount . get_config('billic_currency_suffix') . ' on the ' . date('jS', mktime(0, 0, 1, date('m') , $plan['prorata_day'])) . ' of every month)' : '') . '</b>' . ($setup > 0 ? ' + ' . get_config('billic_currency_prefix') . number_format($setup, 2) . get_config('billic_currency_suffix') . ' setup fee' : '') . '</td></tr>';
 				}
 				echo '<input type="hidden" name="base64" value="1">';
 				foreach ($form_order as $key => $opts) {
@@ -536,7 +544,7 @@ function changeOrder() {
 		));
 		echo '</div>'; // orderFormContainer
 		echo '<script>
-var summaryNames = new Object();var summaryPrices = new Object();var summaryTypes = new Object();var summaryOptionsNames = new Object();var summaryOptionsPrices = new Object();';
+var summaryNames = new Object();var summaryPrices = new Object();var summaryTypes = new Object();var summaryOptionsNames = new Object();var summaryOptionsPrices = new Object();var summaryOptionsSetup = new Object();';
 		foreach ($orderformitems as $item) {
 			echo 'summaryNames[' . $item['id'] . '] = "' . safe($item['name']) . '";';
 			echo 'summaryPrices[' . $item['id'] . '] = "' . $item['price'] . '";';
@@ -544,16 +552,19 @@ var summaryNames = new Object();var summaryPrices = new Object();var summaryType
 			if ($item['type'] == 'dropdown') {
 				echo 'summaryOptionsNames[' . $item['id'] . '] = new Object();';
 				echo 'summaryOptionsPrices[' . $item['id'] . '] = new Object();';
-				$options = $db->q('SELECT `id`, `name`, `price` FROM `orderformoptions` WHERE `parent` = ? ORDER BY `order` ASC', $item['id']);
+				echo 'summaryOptionsSetup[' . $item['id'] . '] = new Object();';
+				$options = $db->q('SELECT `id`, `name`, `price`, `setup` FROM `orderformoptions` WHERE `parent` = ? ORDER BY `order` ASC', $item['id']);
 				foreach ($options as $option) {
 					echo 'summaryOptionsNames[' . $item['id'] . '][' . $option['id'] . '] = "' . safe($option['name']) . '";';
 					echo 'summaryOptionsPrices[' . $item['id'] . '][' . $option['id'] . '] = "' . $option['price'] . '";';
+					echo 'summaryOptionsSetup[' . $item['id'] . '][' . $option['id'] . '] = "' . $option['setup'] . '";';
 				}
 			}
 		}
 		echo 'function orderSummary() {
 			var total = Number(\'' . $baseprice . '\');
-	var html = \'<table class="table table-striped"><tr><th colspan="3">Order Summary</th></tr><tr><td colspan="2"><b>Plan Cost</b></td><td>' . get_config('billic_currency_prefix') . $baseprice . get_config('billic_currency_suffix') . '</td></tr>\';
+			var totalSetup = Number(\'' . $plan['setup'] . '\');
+	var html = \'<table class="table table-striped"><tr><th colspan="4">Order Summary</th></tr><tr><td colspan="2"><b>'.safe($plan['name']).'</b></td><td>' . get_config('billic_currency_prefix') . $baseprice . get_config('billic_currency_suffix') . '</td></tr>\';
 	$(\'#orderFormContainer input, #orderFormContainer select, #orderFormContainer textarea\').each(function(index){ 
 		//html = html + k + \' \' + v + \' \';
 		var el = $(this);
@@ -563,12 +574,14 @@ var summaryNames = new Object();var summaryPrices = new Object();var summaryType
 		}
 		var val = \'\';
 		var price = \'0.00\';
+		var setup = \'0.00\';
 		//console.log(summaryTypes[name]);
 		if (summaryTypes[name] == \'dropdown\') {
 			var optionid = el.val();
 			//console.log(optionid);
 			val = summaryOptionsNames[name][optionid];
 			price = summaryOptionsPrices[name][optionid];
+			setup = summaryOptionsSetup[name][optionid];
 		} else
 		if (summaryTypes[name] == \'slider\') {
 			val = el.val();
@@ -590,11 +603,16 @@ var summaryNames = new Object();var summaryPrices = new Object();var summaryType
 				price = summaryPrices[name];
 			}
 		}
-
+		
 		total = (total+Number(price));
-		html = html + \'<tr><td><b>\' + summaryNames[name] + \'</b></td><td>\'+val+\'</td><td>' . get_config('billic_currency_prefix') . '\'+$.number(price, 2)+\'' . get_config('billic_currency_suffix') . '</td></tr>\';
+		var setupline = \'\';
+		if (setup>0) {
+			totalSetup = (totalSetup+Number(setup));
+			setupline = \'' . get_config('billic_currency_prefix') . '\'+$.number(setup, 2)+\'' . get_config('billic_currency_suffix') . ' setup fee\';
+		}
+		html = html + \'<tr><td><b>\' + summaryNames[name] + \'</b></td><td>\'+val+\'</td><td>' . get_config('billic_currency_prefix') . '\'+$.number(price, 2)+\'' . get_config('billic_currency_suffix') . '</td><td>\'+setupline+\'</td></tr>\';
 	});
-	var html = html + \'<tr><td colspan="2" align="right">Total:</td><td>' . get_config('billic_currency_prefix') . '\'+$.number(total, 2)+\'' . get_config('billic_currency_suffix') . '</td></tr></table>\';
+	var html = html + \'<tr><td colspan="2" align="right">Total:</td><td>' . get_config('billic_currency_prefix') . '\'+$.number(total, 2)+\'' . get_config('billic_currency_suffix') . '</td><td>' . get_config('billic_currency_prefix') . '\'+$.number(totalSetup, 2)+\'' . get_config('billic_currency_suffix') . ' setup fee</td></tr></table>\';
 	$( "#orderSummary" ).html(html);
 }
 addLoadEvent(function() {
@@ -891,6 +909,8 @@ addLoadEvent(function() {
 			if ($baseprice == '') {
 				$baseprice = 0;
 			}
+			$setup = $plan['price'];
+			if ($setup===null) $setup = 0;
 			/*
 			   Work out the total price
 			*/
@@ -939,6 +959,7 @@ addLoadEvent(function() {
 										if ($option['name'] == $value) {
 											$valid = true;
 											$price+= $option['price'];
+											$setup+= $option['setup'];
 											$value = $option['module_var'];
 											break;
 										}
@@ -1025,6 +1046,7 @@ addLoadEvent(function() {
 				'regdate' => $time,
 				'domain' => $domain,
 				'amount' => $price,
+				'setup' => $setup,
 				'billingcycle' => $_POST['billingcycle'],
 				'nextduedate' => $time,
 				'domainstatus' => 'Pending',
