@@ -564,7 +564,7 @@ var summaryNames = new Object();var summaryPrices = new Object();var summaryType
 		echo 'function orderSummary() {
 			var total = Number(\'' . $baseprice . '\');
 			var totalSetup = Number(\'' . $plan['setup'] . '\');
-	var html = \'<table class="table table-striped"><tr><th colspan="4">Order Summary</th></tr><tr><td colspan="2"><b>'.safe($plan['name']).'</b></td><td>' . get_config('billic_currency_prefix') . $baseprice . get_config('billic_currency_suffix') . '</td></tr>\';
+	var html = \'<table class="table table-striped"><tr><th colspan="4">Order Summary</th></tr><tr><td colspan="2"><b>'.safe($plan['name']).'</b></td><td>' . get_config('billic_currency_prefix') . $baseprice . get_config('billic_currency_suffix') . '</td><td></td></tr>\';
 	$(\'#orderFormContainer input, #orderFormContainer select, #orderFormContainer textarea\').each(function(index){ 
 		//html = html + k + \' \' + v + \' \';
 		var el = $(this);
